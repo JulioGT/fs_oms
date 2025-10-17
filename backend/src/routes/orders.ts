@@ -1,12 +1,14 @@
 import { randomUUID } from "crypto";
 import { Router, Request, Response } from "express";
+import { QueryTypes } from "sequelize";
 import Order from "../models/order";
+import sequelize from "../db";
 import { validateBody, validateQuery } from "../middlewares/validate";
 import {
   createOrderSchema,
   putOrderSchema,
   patchOrderSchema,
-  paginationSchema,
+  listOrdersQuerySchema,
 } from "../validation/orderSchemas";
 
 const router = Router();
@@ -31,30 +33,73 @@ router.get("/:id", async (req: Request, res: Response) => {
   return res.json(order);
 });
 
-// List with pagination
-router.get("/", validateQuery(paginationSchema), async (req: Request, res: Response) => {
-  const { page, page_size } = (res.locals.query || {}) as {
+router.get("/", validateQuery(listOrdersQuerySchema), async (req: Request, res: Response) => {
+  const { page, page_size, status } = (res.locals.query || {}) as {
     page: number;
     page_size: number;
+    status?: string;
   };
   const limit = Number(page_size);
   const offset = (Number(page) - 1) * limit;
 
+  const whereClause: Record<string, unknown> = {};
+  if (status) {
+    const statusArray = status.split(",").map((s) => s.trim());
+    whereClause.status = statusArray;
+  }
+
   const { rows, count } = await Order.findAndCountAll({
+    where: whereClause,
     limit,
     offset,
     order: [["created_at", "DESC"]],
     paranoid: true,
   });
 
+  // Get total counts efficiently with a single query
+  const statusCountsQuery = `
+    SELECT 
+      status,
+      COUNT(*) as count
+    FROM orders 
+    WHERE deleted_at IS NULL 
+    GROUP BY status
+  `;
+
+  const statusCounts = (await sequelize.query(statusCountsQuery, {
+    type: QueryTypes.SELECT,
+  })) as Array<{ status: string; count: string }>;
+
+  let totalCancelled = 0;
+  let totalCompleted = 0;
+  let totalPending = 0;
+
+  statusCounts.forEach((item) => {
+    const count = parseInt(item.count, 10);
+    switch (item.status) {
+      case "cancelled":
+        totalCancelled = count;
+        break;
+      case "completed":
+        totalCompleted = count;
+        break;
+      case "pending":
+        totalPending = count;
+        break;
+    }
+  });
+
+  const totalOrders = totalCancelled + totalCompleted + totalPending;
+
   return res.json({
     data: rows,
-    total: count,
+    total: totalOrders,
+    filtered_count: count,
     page: Number(page),
     page_size: limit,
-    total_cancelled: await Order.count({ where: { status: "cancelled" } }),
-    total_completed: await Order.count({ where: { status: "completed" } }),
-    total_pending: await Order.count({ where: { status: "pending" } }),
+    total_cancelled: totalCancelled,
+    total_completed: totalCompleted,
+    total_pending: totalPending,
   });
 });
 

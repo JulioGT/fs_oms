@@ -1,5 +1,6 @@
 import StatusBadge from "../StatusBadge/StatusBadge";
-import { PaginatedOrdersResponse } from "../../api/orders";
+import StatusMultiSelect from "../StatusMultiSelect/StatusMultiSelect";
+import { PaginatedOrdersResponse, OrderStatus } from "../../api/orders";
 import Loading from "../Loading/Loading";
 
 interface OrderTableProps {
@@ -7,17 +8,43 @@ interface OrderTableProps {
   openEdit: (id: string, mode: "show" | "create" | "edit") => void;
   confirmDelete: (id: string) => void;
   loading: boolean;
+  selectedStatuses: OrderStatus[];
+  onStatusFilterChange: (statuses: OrderStatus[]) => void;
 }
 
-function OrderTable({ data, openEdit, confirmDelete, loading }: OrderTableProps) {
+function OrderTable({
+  data,
+  openEdit,
+  confirmDelete,
+  loading,
+  selectedStatuses,
+  onStatusFilterChange,
+}: OrderTableProps) {
   if (loading) {
     return <Loading />;
   }
 
   return (
-    <div className="overflow-hidden rounded border bg-white">
+    <div className="rounded border bg-white overflow-visible">
       <table className="min-w-full text-left text-sm">
         <thead className="bg-gray-100 text-sm text-gray-600">
+          <tr>
+            <th className="px-4 py-2"></th>
+            <th className="px-4 py-2"></th>
+            <th className="px-4 py-2"></th>
+            <th className="px-4 py-2"></th>
+            <th className="px-4 py-2 uppercase text-sm">
+              <span className="mr-2">Filter by:</span>
+            </th>
+            <th className="px-4 py-2 uppercase text-sm relative">
+              <div className="flex items-center">
+                <StatusMultiSelect
+                  selectedStatuses={selectedStatuses}
+                  onSelectionChange={onStatusFilterChange}
+                />
+              </div>
+            </th>
+          </tr>
           <tr>
             <th className="px-4 py-2 uppercase text-sm">Order ID</th>
             <th className="px-4 py-2 uppercase text-sm">Customer</th>

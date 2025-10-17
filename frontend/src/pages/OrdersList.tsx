@@ -1,19 +1,37 @@
 import { useEffect, useState } from "react";
 import Header from "../components/Header/Header";
+import { useSearchParams } from "react-router-dom";
 import EditModal from "../components/EditModal/EditModal";
 import Pagination from "../components/Pagination/Pagination";
 import OrderTable from "../components/OrderTable/OrderTable";
 import CardSection from "../components/CardSection/CardSection";
-import { deleteOrder, listOrders, PaginatedOrdersResponse } from "../api/orders";
 import DeleteConfirmationModal from "../components/DeleteConfirmation/DeleteConfirmation";
+import { deleteOrder, listOrders, PaginatedOrdersResponse, OrderStatus } from "../api/orders";
 
 export default function OrdersList() {
   const [pageSize] = useState(10);
   const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Initialize status filter from URL params
+  const getInitialStatusFilter = (): OrderStatus[] => {
+    const statusParam = searchParams.get("status");
+
+    if (!statusParam) {
+      return [];
+    }
+
+    return statusParam
+      .split(",")
+      .filter((s): s is OrderStatus => ["pending", "completed", "cancelled"].includes(s));
+  };
+
+  const [selectedStatuses, setSelectedStatuses] = useState<OrderStatus[]>(getInitialStatusFilter);
   const [data, setData] = useState<PaginatedOrdersResponse>({
     page: 1,
     data: [],
     total: 0,
+    filtered_count: 0,
     page_size: 10,
     total_pending: 0,
     total_cancelled: 0,
@@ -32,7 +50,11 @@ export default function OrdersList() {
     try {
       setLoading(true);
       setError(null);
-      const res = await listOrders(page, pageSize);
+      const res = await listOrders(
+        page,
+        pageSize,
+        selectedStatuses.length > 0 ? selectedStatuses : undefined,
+      );
       setData(res);
     } catch (e: any) {
       setError(e?.response?.data?.error?.message || e?.message || "Failed to load");
@@ -41,12 +63,25 @@ export default function OrdersList() {
     }
   }
 
+  const handleStatusChange = (statuses: OrderStatus[]) => {
+    setSelectedStatuses(statuses);
+    setPage(1);
+
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (statuses.length > 0) {
+      newSearchParams.set("status", statuses.join(","));
+    } else {
+      newSearchParams.delete("status");
+    }
+    setSearchParams(newSearchParams);
+  };
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page, selectedStatuses]);
 
-  const totalPages = Math.max(1, Math.ceil(data.total / pageSize));
+  const totalPages = Math.max(1, Math.ceil(data.filtered_count / pageSize));
   const canNext = page < totalPages;
   const canPrev = page > 1;
 
@@ -94,6 +129,8 @@ export default function OrdersList() {
           openEdit={openEdit}
           confirmDelete={confirmDelete}
           loading={loading}
+          selectedStatuses={selectedStatuses}
+          onStatusFilterChange={handleStatusChange}
         />
 
         <Pagination

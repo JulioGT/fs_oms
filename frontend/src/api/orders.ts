@@ -15,6 +15,7 @@ export interface Order {
 export interface PaginatedOrdersResponse {
   data: Order[];
   total: number;
+  filtered_count: number;
   page: number;
   page_size: number;
   total_cancelled: number;
@@ -22,10 +23,14 @@ export interface PaginatedOrdersResponse {
   total_pending: number;
 }
 
-export async function listOrders(page = 1, pageSize = 10) {
-  const res = await api.get<PaginatedOrdersResponse>(`/orders`, {
-    params: { page, page_size: pageSize },
-  });
+export async function listOrders(page = 1, pageSize = 10, statusFilter?: OrderStatus[]) {
+  const params: Record<string, unknown> = { page, page_size: pageSize };
+
+  if (statusFilter && statusFilter.length > 0) {
+    params.status = statusFilter.join(",");
+  }
+
+  const res = await api.get<PaginatedOrdersResponse>(`/orders`, { params });
   return res.data;
 }
 
