@@ -26,9 +26,17 @@ This project fulfills the Full Stack Engineer Challenge requirements:
 - **Error & Loading States**: Proper handling of API loading, success, and error states
 - **Technology**: React with TypeScript, type-safe axios client, fully typed components and data models
 
-## Screenshot
+## Demo Video
 
-![Dashboard](dashboard.png)
+Watch a complete demonstration of the Order Management System:
+
+[![Watch the video](dashboard.png)](https://drive.google.com/file/d/1vUFiov3_z5rYCLbqhSdwFlKPJeccXCs3/view?usp=sharing)
+
+_or_
+
+[![Demo Video](https://img.shields.io/badge/▶️_Watch_Demo-4285F4?style=for-the-badge&logo=google-drive&logoColor=white)](https://drive.google.com/file/d/1vUFiov3_z5rYCLbqhSdwFlKPJeccXCs3/view?usp=sharing)
+
+_Click the badge above to watch the full demo video on Google Drive_
 
 ## Tech Stack
 
