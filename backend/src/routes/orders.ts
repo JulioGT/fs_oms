@@ -44,7 +44,7 @@ router.get("/", validateQuery(paginationSchema), async (req: Request, res: Respo
     limit,
     offset,
     order: [["created_at", "DESC"]],
-    paranoid: true, // exclude soft-deleted
+    paranoid: true,
   });
 
   return res.json({
@@ -52,6 +52,9 @@ router.get("/", validateQuery(paginationSchema), async (req: Request, res: Respo
     total: count,
     page: Number(page),
     page_size: limit,
+    total_cancelled: await Order.count({ where: { status: "cancelled" } }),
+    total_completed: await Order.count({ where: { status: "completed" } }),
+    total_pending: await Order.count({ where: { status: "pending" } }),
   });
 });
 

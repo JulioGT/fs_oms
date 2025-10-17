@@ -17,6 +17,9 @@ export interface PaginatedOrdersResponse {
   total: number;
   page: number;
   page_size: number;
+  total_cancelled: number;
+  total_completed: number;
+  total_pending: number;
 }
 
 export async function listOrders(page = 1, pageSize = 10) {

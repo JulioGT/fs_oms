@@ -3,7 +3,7 @@ import { z } from "zod";
 export const orderStatusEnum = z.enum(["pending", "completed", "cancelled"]);
 
 export const createOrderSchema = z.object({
-  customerName: z.string().min(1).max(100),
+  customerName: z.string().trim().min(1).max(100),
   item: z.string().min(1).max(100),
   quantity: z.number().int().min(1),
   status: orderStatusEnum,
@@ -13,7 +13,7 @@ export const putOrderSchema = createOrderSchema; // full replace
 
 export const patchOrderSchema = z
   .object({
-    customerName: z.string().min(1).max(100).optional(),
+    customerName: z.string().trim().min(1).max(100).optional(),
     item: z.string().min(1).max(100).optional(),
     quantity: z.number().int().min(1).optional(),
     status: orderStatusEnum.optional(),
