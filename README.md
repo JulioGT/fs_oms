@@ -57,6 +57,12 @@ _Click the badge above to watch the full demo video on Google Drive_
 - **Tailwind CSS** - Utility-first styling
 - **Zod** - Form validation
 
+### DevOps & Deployment
+
+- **Docker** - Containerization for easy development and deployment
+- **Docker Compose** - Multi-service orchestration
+- **Nginx** - Production web server for frontend
+
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:
@@ -100,9 +106,9 @@ psql postgres
 Create the database and user:
 
 ```sql
-CREATE DATABASE oms_db;
-CREATE USER oms_user WITH PASSWORD 'your_secure_password';
-GRANT ALL PRIVILEGES ON DATABASE oms_db TO oms_user;
+CREATE DATABASE fs_oms;
+CREATE USER fs_oms WITH PASSWORD 'fs_oms';
+GRANT ALL PRIVILEGES ON DATABASE fs_oms TO fs_oms;
 \q
 ```
 
@@ -118,12 +124,10 @@ cp .env.example .env  # if you have an example file, or create manually
 Add the following to your `.env` file:
 
 ```env
-DATABASE_URL=postgresql://oms_user:your_secure_password@localhost:5432/oms_db
+DATABASE_URL=postgres://fs_oms:fs_oms@localhost:5432/fs_oms
 PORT=3000
 NODE_ENV=development
 ```
-
-**Important**: Replace `your_secure_password` with the actual password you created.
 
 ### 4. Run Migrations
 
@@ -210,6 +214,19 @@ The frontend will be available at `http://localhost:3001` (or another port if 30
 
 ## Running the Application
 
+### Option 1: Docker (Recommended)
+
+```bash
+# Start all services with Docker
+docker-compose up -d
+
+# Access the application
+# Frontend: http://localhost
+# Backend API: http://localhost:3000
+```
+
+### Option 2: Manual Setup
+
 1. Ensure PostgreSQL is running
 2. Start the backend: `cd backend && npm run dev`
 3. Start the frontend: `cd frontend && npm start`
@@ -268,6 +285,10 @@ fs_oms/
 │   │   ├── routes/          # API routes
 │   │   ├── validation/      # Zod schemas
 │   │   └── server.ts        # Entry point
+│   ├── Dockerfile           # Production Docker image
+│   ├── Dockerfile.dev       # Development Docker image
+│   ├── .dockerignore        # Docker ignore file
+│   ├── init-db.sql          # Database initialization
 │   ├── package.json
 │   └── tsconfig.json
 ├── frontend/
@@ -278,8 +299,13 @@ fs_oms/
 │   │   ├── pages/           # Page components
 │   │   ├── App.tsx          # Main app component
 │   │   └── index.tsx        # Entry point
+│   ├── Dockerfile           # Production Docker image (nginx)
+│   ├── Dockerfile.dev       # Development Docker image
+│   ├── nginx.conf           # Nginx configuration
+│   ├── .dockerignore        # Docker ignore file
 │   ├── package.json
 │   └── tsconfig.json
+├── docker-compose.yml       # Multi-service Docker setup
 └── README.md
 ```
 
@@ -321,9 +347,166 @@ cd frontend
 npm start
 ```
 
+## Docker Setup
+
+### Prerequisites for Docker
+
+- **Docker** (v20.10 or higher)
+- **Docker Compose** (v2.0 or higher)
+
+### Quick Start with Docker
+
+**Prerequisites**: Docker and Docker Compose installed
+
+```bash
+# 1. Clone and enter directory
+git clone <repository-url>
+cd fs_oms
+
+# 2. Start everything with one command
+docker-compose up -d
+
+# 3. Wait for services to start (30-60 seconds)
+docker-compose logs -f
+
+# 4. Open your browser to http://localhost
+```
+
+**That's it!** The application should be running with sample data.
+
+#### Verify Everything is Working
+
+```bash
+# Run the validation script to ensure everything works
+bash test-docker.sh
+```
+
+This script tests all services and confirms the setup is working correctly.
+
+The application will be available at:
+
+- **Frontend**: http://localhost (port 80)
+- **Backend API**: http://localhost:3000
+- **PostgreSQL**: localhost:5432
+
+### Development with Docker
+
+For development with hot reload:
+
+```bash
+# Start development environment
+docker-compose --profile dev up -d
+
+# View logs
+docker-compose --profile dev logs -f
+
+# Stop development environment
+docker-compose --profile dev down
+```
+
+Development URLs:
+
+- **Frontend**: http://localhost:3001 (with hot reload)
+- **Backend API**: http://localhost:3000 (with hot reload)
+
+### Docker Commands
+
+```bash
+# Build images
+docker-compose build
+
+# Start services in background
+docker-compose up -d
+
+# View running containers
+docker-compose ps
+
+# View logs for all services
+docker-compose logs -f
+
+# View logs for specific service
+docker-compose logs -f backend
+
+# Stop all services
+docker-compose down
+
+# Remove volumes (deletes database data)
+docker-compose down -v
+
+# Rebuild and restart
+docker-compose up --build -d
+```
+
+### Docker Services
+
+The docker-compose setup includes:
+
+- **postgres**: PostgreSQL 15 database with persistent storage
+- **backend**: Node.js/Express API server
+- **frontend**: React app served with nginx
+- **backend-dev**: Development backend with hot reload (dev profile)
+- **frontend-dev**: Development frontend with hot reload (dev profile)
+
+### Environment Variables for Docker
+
+The docker-compose.yml uses these default values:
+
+- Database: `oms_db`
+- User: `oms_user`
+- Password: `oms_secure_password`
+
+To customize, create a `.env` file in the root directory:
+
+```env
+POSTGRES_DB=oms_db
+POSTGRES_USER=oms_user
+POSTGRES_PASSWORD=your_custom_password
+```
+
+### Docker Troubleshooting
+
+**Port conflicts:**
+
+```bash
+# Check what's using the ports
+lsof -i :3000
+lsof -i :80
+
+# Stop conflicting services or change ports in docker-compose.yml
+```
+
+**Database connection issues:**
+
+```bash
+# Check postgres logs
+docker-compose logs postgres
+
+# Connect to database directly
+docker-compose exec postgres psql -U oms_user -d oms_db
+```
+
+**Reset everything:**
+
+```bash
+# Stop and remove everything including volumes
+docker-compose down -v
+
+# Remove all images
+docker-compose down --rmi all
+
+# Start fresh
+docker-compose up --build -d
+```
+
 ## Building for Production
 
+### Manual Build
+
 The production build will be in the `frontend/build` directory.
+
+### Docker Production Build
+
+Use the default docker-compose.yml for production-ready containers with optimized nginx serving.
 
 ## Troubleshooting
 
@@ -332,7 +515,7 @@ The production build will be in the `frontend/build` directory.
 1. Verify PostgreSQL is running: `pg_isready`
 2. Check your `.env` file has the correct `DATABASE_URL`
 3. Ensure the database user has proper permissions
-4. Test the connection: `psql -U oms_user -d oms_db`
+4. Test the connection: `psql -U fs_oms -d fs_oms`
 
 ### Port Already in Use
 
