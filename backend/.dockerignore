@@ -1,0 +1,16 @@
+# Docker ignore file for backend
+node_modules
+npm-debug.log
+.env
+.env.local
+.env.test
+.git
+.gitignore
+README.md
+Dockerfile
+Dockerfile.dev
+.dockerignore
+coverage
+.nyc_output
+dist
+build

@@ -1,0 +1,126 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: oms_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: oms_db
+      POSTGRES_USER: oms_user
+      POSTGRES_PASSWORD: oms_secure_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/pgdata
+      - ./backend/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - oms_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oms_user -d oms_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: oms_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://oms_user:oms_secure_password@postgres:5432/oms_db
+      TEST_DATABASE_URL: postgresql://oms_user:oms_secure_password@postgres:5432/oms_test_db
+      PORT: 3000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    networks:
+      - oms_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        npm run db:migrate &&
+        npm run db:seed &&
+        npm start
+      "
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: http://localhost:3000
+    container_name: oms_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      - oms_network
+    depends_on:
+      - backend
+
+  # Development Services (for local development with hot reload)
+  backend-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: oms_backend_dev
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://oms_user:oms_secure_password@postgres:5432/oms_db
+      TEST_DATABASE_URL: postgresql://oms_user:oms_secure_password@postgres:5432/oms_test_db
+      PORT: 3000
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    networks:
+      - oms_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: >
+      sh -c "
+        npm run db:migrate &&
+        npm run db:seed &&
+        npm run dev
+      "
+    profiles:
+      - dev
+
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: oms_frontend_dev
+    restart: unless-stopped
+    environment:
+      - REACT_APP_API_URL=http://localhost:3000
+    ports:
+      - "3001:3000"
+    networks:
+      - oms_network
+    depends_on:
+      - backend-dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    profiles:
+      - dev
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  oms_network:
+    driver: bridge
